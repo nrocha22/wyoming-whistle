@@ -18,6 +18,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
 COPY wyoming_whistle ./wyoming_whistle
+COPY scripts ./scripts
 RUN pip install --no-cache-dir . && useradd --system --uid 10300 whistle
 COPY --from=fetch /models /models
 

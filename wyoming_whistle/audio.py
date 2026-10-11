@@ -44,18 +44,26 @@ def find_speech(
     rate: int,
     floor_db: float = -50.0,
     below_peak_db: float = 30.0,
+    above_noise_db: float = 9.0,
     pad_seconds: float = 0.25,
 ) -> Optional[SpeechBounds]:
     """Locate speech by energy. Returns None when there is none.
 
-    A frame counts as speech when it is louder than ``floor_db`` and within
-    ``below_peak_db`` of the loudest frame. The relative test adapts to how loud
-    the microphone is; the absolute floor keeps pure noise from qualifying.
+    A frame counts as speech when it is louder than ``floor_db``, within
+    ``below_peak_db`` of the loudest frame, and ``above_noise_db`` over the
+    clip's noise floor (its 10th percentile level).
+
+    The noise-floor test is what makes this work on phones: with automatic gain,
+    measured phone clips sit at a steady -35 dBFS between words while speech
+    peaks at -12 to -25, so the peak-relative test alone kept every frame.
+    Clean audio (silence near -inf) is unaffected: there the peak test decides.
     """
     levels = frame_db(samples, rate)
     if len(levels) == 0:
         return None
-    threshold = max(floor_db, float(levels.max()) - below_peak_db)
+    peak = float(levels.max())
+    noise = float(np.percentile(levels, 10))
+    threshold = max(floor_db, peak - below_peak_db, min(peak - 6.0, noise + above_noise_db))
     speech = np.flatnonzero(levels > threshold)
     if len(speech) == 0:
         return None

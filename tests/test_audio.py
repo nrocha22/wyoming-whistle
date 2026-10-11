@@ -41,3 +41,13 @@ def test_clip_saver_rotates(tmp_path):
     meta = json.loads((tmp_path / "clips" / (wavs[-1][:-4] + ".json")).read_text())
     assert meta["text"] == "clip 2"
     assert oct(os.stat(tmp_path / "clips").st_mode & 0o777) == "0o700"
+
+
+def test_phone_like_noise_floor_is_trimmed():
+    # Measured on phone clips: steady -35 dBFS between words (automatic gain), speech ~-15.
+    rng = np.random.default_rng(1)
+    noise = lambda s: (rng.standard_normal(int(s * RATE)) * 10 ** (-35 / 20)).astype(np.float32)
+    samples = np.concatenate([noise(1.5), tone(1.0, level=0.25) + noise(1.0), noise(2.5)])
+    bounds = find_speech(samples, RATE, pad_seconds=0.25)
+    kept = (bounds.end - bounds.start) / RATE
+    assert 1.0 <= kept <= 1.7  # the second of speech plus padding, not 5 s
