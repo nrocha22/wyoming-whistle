@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wyoming-whistle"
+version = "0.1.0"
+description = "Wyoming speech-to-text server for Home Assistant, backed by Cactus Whistle (local, offline)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+# Pinned on purpose: cactus-needle moves fast (6 releases in its first 9 days)
+# and model.py depends on its internals. Bump deliberately, with the tests.
+dependencies = [
+    "cactus-needle==3.2.0",
+    "wyoming==1.10.2",
+    "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+wyoming-whistle = "wyoming_whistle.__main__:run"
+
+[tool.setuptools]
+packages = ["wyoming_whistle"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,12 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+/models/*.cact
+/models/*.so
+/.upstream/
+/local/
+# Recorded or generated audio stays out of git: it may carry someone's voice.
+*.wav
+!tests/fixtures/README.md
