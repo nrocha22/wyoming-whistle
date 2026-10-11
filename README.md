@@ -22,9 +22,16 @@ speech recognition model (English, German, French, Spanish, Italian, Dutch, Poli
 ## Run (Docker)
 
 ```sh
-docker build -t wyoming-whistle .
-docker run -d --name wyoming-whistle -p 10300:10300 wyoming-whistle --language en
+docker run -d --name wyoming-whistle -p 10300:10300 \
+  ghcr.io/nrocha22/wyoming-whistle:main --language en
 ```
+
+Images are built for `linux/amd64` and `linux/arm64`. Or build it yourself:
+`docker build -t wyoming-whistle .` (the build downloads the pinned model and engine and
+checks their sha256).
+
+> arm64 is verified in CI (under emulation: the engine loads and the server answers
+> with no network), but speed on a Raspberry Pi has not been measured yet. Reports welcome.
 
 Then in Home Assistant: **Settings → Devices & services → Add integration → Wyoming
 Protocol**, host = the Docker host, port = 10300, and pick `whistle` as the

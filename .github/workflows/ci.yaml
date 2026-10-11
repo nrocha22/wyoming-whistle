@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install ".[test]"
+      - run: python -m pytest -q
+
+  image:
+    # Builds the real image (pinned, checksum-verified model and engine) for each
+    # architecture and starts it with no network. Startup loads the engine and
+    # transcribes one second of silence, so a broken engine fails here.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: wyoming-whistle:test
+      - name: Start offline and pass the health check
+        run: |
+          docker run -d --name ww --platform ${{ matrix.platform }} --network none wyoming-whistle:test --language en
+          for i in $(seq 1 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' ww 2>/dev/null || echo gone)
+            if [ "$status" = healthy ]; then break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ww)" != true ]; then break; fi
+            sleep 5
+          done
+          docker logs ww
+          docker exec ww python -m wyoming_whistle.health_check
