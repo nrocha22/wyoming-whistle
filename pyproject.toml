@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wyoming-whistle"
-version = "0.1.0"
+version = "0.2.0"
 description = "Wyoming speech-to-text server for Home Assistant, backed by Cactus Whistle (local, offline)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -15,6 +15,7 @@ dependencies = [
     "cactus-needle==3.2.0",
     "wyoming==1.10.2",
     "numpy>=1.26,<3",
+    "aiohttp>=3.9,<4",
 ]
 
 [project.optional-dependencies]

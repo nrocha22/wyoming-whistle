@@ -16,6 +16,7 @@ from wyoming.server import AsyncServer
 from . import MODEL_REVISION, __version__
 from .audio import ClipSaver
 from .handler import Settings, WhistleEventHandler
+from .hass_api import HassKeywords
 from .model import LANGUAGES, SAMPLE_RATE, WhistleModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,6 +87,14 @@ def parse_args() -> argparse.Namespace:
         help="Opt-in: keep the last utterances here as WAV + JSON for debugging. Contains voices.",
     )
     parser.add_argument("--save-audio-max", type=int, default=100, help="Clips kept by --save-audio-dir")
+    parser.add_argument(
+        "--hass-url",
+        default=os.environ.get("WHISTLE_HASS_URL"),
+        help="Home Assistant websocket URL, e.g. ws://homeassistant.local:8123/api/websocket. "
+        "Entity, area and floor names become keywords. Token from WHISTLE_HASS_TOKEN.",
+    )
+    parser.add_argument("--hass-refresh-seconds", type=float, default=300.0)
+    parser.add_argument("--max-keywords", type=int, default=200)
     parser.add_argument("--debug", action="store_true", help="Log DEBUG messages, including transcripts")
     parser.add_argument("--log-format", default=logging.BASIC_FORMAT)
     parser.add_argument("--version", action="version", version=__version__)
@@ -109,6 +118,13 @@ async def main() -> None:
         clip_saver = ClipSaver(args.save_audio_dir, args.save_audio_max)
         _LOGGER.warning("Saving the last %s clips to %s (contains voices)", args.save_audio_max, args.save_audio_dir)
 
+    hass = None
+    if args.hass_url:
+        token = os.environ.get("WHISTLE_HASS_TOKEN")
+        if not token:
+            raise SystemExit("--hass-url needs a long-lived access token in WHISTLE_HASS_TOKEN")
+        hass = HassKeywords(args.hass_url, token, args.hass_refresh_seconds, args.max_keywords)
+
     settings = Settings(
         default_language=args.language,
         keywords=args.keyword,
@@ -116,9 +132,15 @@ async def main() -> None:
         min_speech_seconds=args.min_speech_seconds,
         floor_db=args.vad_floor_db,
         clip_saver=clip_saver,
+        hass=hass,
+        max_keywords=args.max_keywords,
     )
     if settings.keywords:
         _LOGGER.info("Keywords: %s", ", ".join(settings.keywords))
+
+    if hass is not None:
+        # Background refresh; transcription never waits for Home Assistant.
+        hass_task = asyncio.create_task(hass.run())  # noqa: F841  pylint: disable=unused-variable
 
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="whistle")
     server = AsyncServer.from_uri(args.uri)

@@ -33,6 +33,34 @@ speech-to-text engine of an Assist pipeline.
 Options: `--language` (fallback when the client sends none), `--keyword` (repeatable,
 biases recognition toward names), `--debug` (logs transcripts).
 
+### Keywords from Home Assistant
+
+```sh
+docker run -d --name wyoming-whistle -p 10300:10300 \
+  -e WHISTLE_HASS_TOKEN=<long-lived access token> \
+  wyoming-whistle --language es --hass-url ws://homeassistant.local:8123/api/websocket \
+  --keyword apaga --keyword enciende --keyword abre --keyword cierra
+```
+
+With `--hass-url`, the names and aliases of entities exposed to Assist, plus area and floor
+names, are used as keywords and refreshed every 5 minutes. Transcription never waits for
+Home Assistant; if it is unreachable the last list is kept. This is the only network
+connection the server makes, and only when configured. The token is read from the
+environment so it does not show up in process listings.
+
+**Add your command verbs with `--keyword`.** Measured on 15 real phone recordings in
+Spanish: with no keywords, "apaga" came back as "A paga" (and Assist no longer understood
+the command); Home Assistant names alone did not fix it, because they contain no verbs;
+names plus a handful of verbs did. Combined with a few custom sentences, Assist understood
+15 of 15 commands, versus 5 of 9 for a phrase-based recognizer on the same speaker.
+
+### Debugging with real voices
+
+`--save-audio-dir DIR` keeps the last utterances (`--save-audio-max`, default 100) as WAV +
+JSON, mode 0600. `scripts/replay_clips.py` re-runs them with different settings, so changes
+can be judged on real speech without asking anyone to repeat themselves. These files are
+recordings of people: keep them local, out of shared backups, and delete them when done.
+
 ## Related work
 
 [Schnurzel700/whistle-wyoming](https://github.com/Schnurzel700/whistle-wyoming) is an

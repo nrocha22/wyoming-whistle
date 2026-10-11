@@ -16,6 +16,7 @@ from wyoming.info import Describe, Info
 from wyoming.server import AsyncEventHandler
 
 from .audio import ClipSaver, find_speech
+from .hass_api import HassKeywords, dedupe
 from .model import CHANNELS, SAMPLE_RATE, SAMPLE_WIDTH, WhistleModel, normalize_language, pcm16_to_float
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,6 +30,8 @@ class Settings:
     min_speech_seconds: float = 0.3
     floor_db: float = -50.0
     clip_saver: Optional[ClipSaver] = None
+    hass: Optional[HassKeywords] = None
+    max_keywords: int = 200
 
 
 class WhistleEventHandler(AsyncEventHandler):
@@ -93,7 +96,8 @@ class WhistleEventHandler(AsyncEventHandler):
         settings = self._settings
         pcm = bytes(self._audio)
         samples = pcm16_to_float(pcm)
-        keywords = self._keywords + self._request_terms
+        hass_words = self._settings.hass.keywords if self._settings.hass else []
+        keywords = dedupe(self._keywords + hass_words + self._request_terms, self._settings.max_keywords)
         started = time.perf_counter()
 
         bounds = find_speech(samples, SAMPLE_RATE, floor_db=settings.floor_db)
